@@ -1,0 +1,15 @@
+<component name="libraryTable">
+  <library name="aqua-blatt1-src">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Desktop/VS_SS_2020/VS_jar_files/messaging.jar!/" />
+      <root url="jar://$PROJECT_DIR$/messaging.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/Desktop/VS_SS_2020/VS_jar_files/messaging-javadoc.jar!/messaging" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/Desktop/VS_SS_2020/VS_jar_files/aqua-blatt1-src.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../aqua-blatt2-poison-src.jar!/" />
+    </SOURCES>
+  </library>
+</component>
