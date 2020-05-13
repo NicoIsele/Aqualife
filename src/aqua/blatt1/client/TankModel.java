@@ -1,15 +1,13 @@
 package aqua.blatt1.client;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
+import java.net.InetSocketAddress;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+import aqua.blatt1.common.msgtypes.Token;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 
@@ -21,6 +19,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
+	protected InetSocketAddress leftNeighbor;
+	protected InetSocketAddress rightNeighbor;
+	protected boolean booltoken;
+
+	Timer timer = new Timer();
+
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -30,6 +34,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	synchronized void onRegistration(String id) {
 		this.id = id;
 		newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+	}
+
+	synchronized void onNeighborUpdate(InetSocketAddress leftNeighbor, InetSocketAddress rightNeighbor) {
+		this.leftNeighbor = leftNeighbor;
+		this.rightNeighbor = rightNeighbor;
 	}
 
 	public synchronized void newFish(int x, int y) {
@@ -68,7 +77,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			fish.update();
 
 			if (fish.hitsEdge())
-				forwarder.handOff(fish);
+				hasToken(fish);
 
 			if (fish.disappears())
 				it.remove();
@@ -96,6 +105,27 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	public synchronized void finish() {
 		forwarder.deregister(id);
+	}
+
+	/******** Blatt 3 *******/
+
+	public synchronized void receiveToken(Token token) {
+		booltoken = true;
+		timer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				booltoken = false;
+				forwarder.sendToken(new Token(), leftNeighbor);
+			}
+		}, 2000);
+
+	}
+	public synchronized void hasToken(FishModel fish) {
+		if (booltoken) {
+			forwarder.handOff(fish, leftNeighbor, rightNeighbor);
+		} else {
+			fish.reverse();
+		}
 	}
 
 }

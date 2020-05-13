@@ -2,10 +2,7 @@ package aqua.blatt1.broker;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
-import aqua.blatt1.common.msgtypes.DeregisterRequest;
-import aqua.blatt1.common.msgtypes.HandoffRequest;
-import aqua.blatt1.common.msgtypes.RegisterRequest;
-import aqua.blatt1.common.msgtypes.RegisterResponse;
+import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
 
@@ -51,7 +48,7 @@ public class Broker {
     ExecutorService executor = Executors.newFixedThreadPool(5);
     int counter = 0;
     ReadWriteLock lock = new ReentrantReadWriteLock();
-    boolean stopRequest = false;
+    volatile boolean stopRequest = false;
 
     public void broker(){
 
@@ -77,14 +74,50 @@ public class Broker {
         }
     }
     private void register(Message msg) {
+        InetSocketAddress sender = msg.getSender();
         String id = "tank"+ counter;
         counter++;
-        client.add( id, msg.getSender());
+        client.add( id, sender);
+
+
+        /********** Aufgabe3 **************/
+
+        int index = client.indexOf(sender);
+        InetSocketAddress leftNeighborOf = (InetSocketAddress) client.getLeftNeighorOf(index);
+        InetSocketAddress rightNeighborOf = (InetSocketAddress) client.getRightNeighorOf(index);
+
+        InetSocketAddress initialLeftNeighbor = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(leftNeighborOf));
+        InetSocketAddress initialRightNeighbor = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(rightNeighborOf));
+
+        if (client.size() == 1){
+            endpoint.send(sender, new NeighborUpdate(leftNeighborOf, rightNeighborOf));
+            endpoint.send(sender, new Token());
+        } else {
+            endpoint.send(sender, new NeighborUpdate(leftNeighborOf, rightNeighborOf));
+            endpoint.send(leftNeighborOf, new NeighborUpdate(initialLeftNeighbor, sender));
+            endpoint.send(rightNeighborOf, new NeighborUpdate(sender, initialRightNeighbor));
+        }
+        /************************/
+
         endpoint.send(msg.getSender(), new RegisterResponse(id));
     }
 
     private void deregister(Message msg) {
-        client.remove(client.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
+        /********** Aufgabe3 **************/
+        InetSocketAddress sender = msg.getSender();
+        int index = client.indexOf(sender);
+        InetSocketAddress leftNeighborOf = (InetSocketAddress) client.getLeftNeighorOf(index);
+        InetSocketAddress rightNeighborOf = (InetSocketAddress) client.getRightNeighorOf(index);
+
+        InetSocketAddress initialLeftNeighbor = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(leftNeighborOf));
+        InetSocketAddress initialRightNeighbor = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(rightNeighborOf));
+
+        endpoint.send(leftNeighborOf, new NeighborUpdate(initialLeftNeighbor, rightNeighborOf));
+        endpoint.send(rightNeighborOf, new NeighborUpdate(leftNeighborOf, initialRightNeighbor));
+        /************************/
+
+        client.remove(index);
+
     }
 
     private void handOffFish(HandoffRequest handoffRequest, InetSocketAddress inetSocketAddress) {
